@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+    <title>سمعى Sam3y — الإعدادات</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <header>
+      <h1>سمعى <span class="en">Sam3y</span></h1>
+      <p class="subtitle">إعدادات المعالجة على الجهاز والملفات</p>
+    </header>
+    <main>
+      <section>
+        <label for="defaultProfile">الملف الافتراضي</label>
+        <select id="defaultProfile">
+          <option value="fast">سريع</option>
+          <option value="balanced">متوازن</option>
+          <option value="best">الأفضل</option>
+        </select>
+      </section>
+      <section>
+        <label>
+          <input type="checkbox" id="onDeviceOnly" checked />
+          المعالجة على الجهاز فقط (افتراضي)
+        </label>
+        <p class="hint">لن يتم إرسال الصوت خارج جهازك.</p>
+      </section>
+      <footer>
+        <button id="save">حفظ</button>
+        <span id="status"></span>
+      </footer>
+    </main>
+    <script src="options.js"></script>
+  </body>
+  </html>
+
