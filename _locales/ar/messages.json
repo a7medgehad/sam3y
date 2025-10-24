@@ -1,0 +1,23 @@
+{
+  "extName": {
+    "message": "سمعى — Sam3y: صوت واضح بلا موسيقى"
+  },
+  "extShortName": {
+    "message": "سمعى Sam3y"
+  },
+  "extDescription": {
+    "message": "إزالة الموسيقى من أي صوت في المتصفح لإخراج صوت الكلام فقط باستخدام نماذج مفتوحة المصدر على الجهاز."
+  },
+  "actionTitle": {
+    "message": "تفعيل/تعطيل إخراج الصوت بدون موسيقى"
+  },
+  "popupEnable": { "message": "تشغيل" },
+  "popupDisable": { "message": "إيقاف" },
+  "popupCurrentTab": { "message": "التبويب الحالي" },
+  "popupGlobal": { "message": "تشغيل عام" },
+  "popupProfile": { "message": "الجودة" },
+  "profileFast": { "message": "سريع" },
+  "profileBalanced": { "message": "متوازن" },
+  "profileBest": { "message": "الأفضل" }
+}
+

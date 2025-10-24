@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "default_locale": "ar",
+  "name": "__MSG_extName__",
+  "short_name": "__MSG_extShortName__",
+  "description": "__MSG_extDescription__",
+  "version": "0.1.0",
+  "minimum_chrome_version": "114",
+  "permissions": [
+    "tabCapture",
+    "offscreen",
+    "storage",
+    "tabs",
+    "activeTab"
+  ],
+  "background": {
+    "service_worker": "service_worker.js"
+  },
+  "action": {
+    "default_title": "__MSG_actionTitle__",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "audio-worklet.js",
+        "inference-worker.js",
+        "offscreen.js",
+        "assets/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
+

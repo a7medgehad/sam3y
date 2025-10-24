@@ -1,0 +1,23 @@
+{
+  "extName": {
+    "message": "سمعى — Sam3y: Voice-only (No Music)"
+  },
+  "extShortName": {
+    "message": "Sam3y"
+  },
+  "extDescription": {
+    "message": "Remove music from any tab’s audio and output clear speech only using on-device open-source ML."
+  },
+  "actionTitle": {
+    "message": "Enable/Disable Voice-only output"
+  },
+  "popupEnable": { "message": "Enable" },
+  "popupDisable": { "message": "Disable" },
+  "popupCurrentTab": { "message": "Current Tab" },
+  "popupGlobal": { "message": "Global" },
+  "popupProfile": { "message": "Profile" },
+  "profileFast": { "message": "Fast" },
+  "profileBalanced": { "message": "Balanced" },
+  "profileBest": { "message": "Best" }
+}
+
