@@ -1,0 +1,12 @@
+# Byte-compiled / cache
+__pycache__/
+*.pyc
+# OS
+.DS_Store
+# Node
+node_modules/
+dist/
+coverage/
+# Editor
+.vscode/
+.idea/
