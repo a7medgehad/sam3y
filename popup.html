@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+    <title>سمعى Sam3y</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>سمعى <span class="en">Sam3y</span></h1>
+      <p class="subtitle" id="subtitle"></p>
+    </header>
+
+    <main>
+      <div class="row">
+        <button id="toggleTab"></button>
+        <span class="hint" id="currentTabLabel"></span>
+      </div>
+      <div class="row">
+        <button id="toggleGlobal"></button>
+        <span class="hint" id="globalLabel"></span>
+      </div>
+      <div class="row">
+        <label for="profile" id="profileLabel"></label>
+        <select id="profile">
+          <option value="fast"></option>
+          <option value="balanced"></option>
+          <option value="best"></option>
+        </select>
+      </div>
+      <div class="row status" id="status"></div>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+  </html>
+
