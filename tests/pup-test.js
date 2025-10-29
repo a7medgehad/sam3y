@@ -65,7 +65,8 @@ async function run() {
   const mutedCheck = await extPage.evaluate(async (url) => {
     const tabs = await chrome.tabs.query({});
     const t = tabs.find(tt => tt.url === url);
-    return { muted: !!t?.muted, id: t?.id };
+    const muted = !!(t && t.mutedInfo && t.mutedInfo.muted);
+    return { muted, id: t?.id };
   }, audioUrl);
   console.log('Muted check:', mutedCheck);
   if (!mutedCheck.muted) throw new Error('Tab was not muted after start');
@@ -80,7 +81,8 @@ async function run() {
   const unmutedCheck = await extPage.evaluate(async (url) => {
     const tabs = await chrome.tabs.query({});
     const t = tabs.find(tt => tt.url === url);
-    return { muted: !!t?.muted, id: t?.id };
+    const muted = !!(t && t.mutedInfo && t.mutedInfo.muted);
+    return { muted, id: t?.id };
   }, audioUrl);
   console.log('Unmuted check:', unmutedCheck);
   if (unmutedCheck.muted) throw new Error('Tab was not unmuted after stop');
