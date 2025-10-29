@@ -30,6 +30,7 @@
       "resources": [
         "audio-worklet.js",
         "inference-worker.js",
+        "assets/model-loader.js",
         "offscreen.js",
         "assets/*"
       ],

@@ -123,6 +123,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const { profile } = msg;
       await setState({ profile });
       await chrome.runtime.sendMessage({ type: 'sam3y:profile', profile });
+      const modelMap = { balanced: 'https://cdn.sam3y.app/models/umx-vocals-compact.onnx', best: 'https://cdn.sam3y.app/models/mdx-vocals-compact.onnx' };
+      if (modelMap[profile]) {
+        try { await chrome.runtime.sendMessage({ type: 'sam3y:offscreen-init-model', modelUrl: modelMap[profile] }); } catch (_) {}
+      }
       sendResponse({ ok: true });
     }
   })();

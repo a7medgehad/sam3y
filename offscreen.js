@@ -3,6 +3,10 @@
 let audioCtx;
 const sessions = new Map(); // tabId -> { stream, source, worklet, filters, gain }
 let currentProfile = 'balanced';
+const MODEL_URLS = {
+  balanced: 'https://cdn.sam3y.app/models/umx-vocals-compact.onnx',
+  best: 'https://cdn.sam3y.app/models/mdx-vocals-compact.onnx'
+};
 
 async function ensureAudioContext() {
   if (audioCtx) return audioCtx;
@@ -14,6 +18,11 @@ async function ensureAudioContext() {
 async function startForTab(tabId, streamId) {
   await ensureAudioContext();
   if (sessions.has(tabId)) return;
+  // Ask worker to init model in background for balanced/best profiles
+  const modelUrl = MODEL_URLS[currentProfile];
+  if (modelUrl) {
+    try { chrome.runtime.sendMessage({ type: 'sam3y:offscreen-init-model', modelUrl }); } catch (_) {}
+  }
   // Use getUserMedia with provided streamId (from tabCapture.getMediaStreamId)
   let stream;
   try {
@@ -126,6 +135,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: true });
     } else if (msg?.type === 'sam3y:profile') {
       setProfile(msg.profile);
+      sendResponse({ ok: true });
+    }
+  })();
+  return true;
+});
+
+// Init model background upon request
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  (async () => {
+    if (msg?.type === 'sam3y:offscreen-init-model') {
+      try {
+        const w = new Worker('inference-worker.js');
+        w.postMessage({ type: 'init', modelUrl: msg.modelUrl });
+        w.onmessage = (e) => {
+          if (e.data?.type === 'ready') {
+            console.log('Sam3y model ready:', e.data);
+          }
+        };
+      } catch (e) {
+        console.warn('Offscreen: model init failed', e);
+      }
       sendResponse({ ok: true });
     }
   })();
