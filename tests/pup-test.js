@@ -69,6 +69,16 @@ async function run() {
     return { muted };
   }, startResp.tabId);
   console.log('Manual mute result:', manualMute);
+
+  // Debug: ensure storage API works
+  const manualStorageKeys = await extPage.evaluate(async (id) => {
+    const { mutedBySam3y = {} } = await chrome.storage.local.get({ mutedBySam3y: {} });
+    mutedBySam3y[id] = true;
+    await chrome.storage.local.set({ mutedBySam3y });
+    const res = await chrome.storage.local.get({ mutedBySam3y: {} });
+    return Object.keys(res.mutedBySam3y);
+  }, startResp.tabId);
+  console.log('Manual storage keys:', manualStorageKeys);
   await new Promise(r => setTimeout(r, 1000));
 
   // Verify tracking in storage marks tab as muted by Sam3y
