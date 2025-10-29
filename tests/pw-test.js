@@ -4,18 +4,37 @@ const fs = require('fs');
 const { chromium } = require('playwright');
 
 async function getExtensionId(context) {
-  // MV3: service worker target includes chrome-extension://<id>/service_worker.js
-  for (let i = 0; i < 60; i++) {
-    const targets = await context.backgroundPages();
-    const sw = targets.find(t => t.url().includes('/service_worker.js'));
-    if (sw) {
-      const url = sw.url();
-      const match = url.match(/^chrome-extension:\/\/([a-z]+)\//);
-      if (match) return match[1];
+  // Derive extension ID by inspecting chrome://extensions under dev mode
+  const page = await context.newPage();
+  await page.goto('chrome://extensions/');
+  // Enable dev mode to show IDs
+  try {
+    await page.evaluate(() => {
+      const mgr = document.querySelector('extensions-manager');
+      const toolbar = mgr.shadowRoot.querySelector('extensions-toolbar');
+      const toggle = toolbar.shadowRoot.querySelector('#dev-mode');
+      toggle.click();
+    });
+  } catch (_) {}
+  await page.waitForTimeout(500);
+  const extId = await page.evaluate(() => {
+    const mgr = document.querySelector('extensions-manager');
+    const list = mgr.shadowRoot.querySelector('extensions-item-list');
+    const items = list.shadowRoot.querySelectorAll('extensions-item');
+    for (const item of items) {
+      const root = item.shadowRoot;
+      const nameEl = root.querySelector('#name');
+      const name = nameEl?.textContent || '';
+      if (name.includes('Sam3y') || name.includes('سمعى')) {
+        const idEl = root.querySelector('#extension-id');
+        if (idEl) return idEl.textContent.trim();
+      }
     }
-    await new Promise(r => setTimeout(r, 250));
-  }
-  throw new Error('Extension service worker not found');
+    return null;
+  });
+  if (!extId) throw new Error('Extension ID not found on chrome://extensions');
+  await page.close();
+  return extId;
 }
 
 async function run() {
@@ -92,4 +111,3 @@ async function run() {
 }
 
 run().catch(err => { console.error(err); process.exit(1); });
-
