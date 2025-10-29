@@ -4,6 +4,7 @@ const fs = require('fs');
 const { chromium } = require('playwright');
 
 async function getExtensionId(context) {
+  if (process.env.EXT_ID) return process.env.EXT_ID;
   // Derive extension ID by inspecting chrome://extensions under dev mode
   const page = await context.newPage();
   await page.goto('chrome://extensions/');
