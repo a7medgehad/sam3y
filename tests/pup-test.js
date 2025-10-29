@@ -61,6 +61,7 @@ async function run() {
   }, audioUrl);
   console.log('Start response:', startResp);
   if (!startResp?.ok) throw new Error('Failed to start processing for audio page');
+  if (!startResp?.trackedMuted) throw new Error('Start reported not tracked muted');
   await new Promise(r => setTimeout(r, 1000));
 
   // Verify tracking in storage marks tab as muted by Sam3y
@@ -71,13 +72,14 @@ async function run() {
     return { trackedMuted: !!(t && mutedBySam3y[t.id]), id: t?.id };
   }, audioUrl);
   console.log('Muted check:', mutedCheck);
-  if (!mutedCheck.trackedMuted) throw new Error('Tab was not tracked muted after start');
+  if (!mutedCheck.trackedMuted) throw new Error('Tab was not tracked muted after start (storage)');
 
   // Stop processing
   const stopResp = await extPage.evaluate(async (url) => {
     return await chrome.runtime.sendMessage({ type: 'sam3y:stop-for-url', url, title: 'Audio Test' });
   }, audioUrl);
   if (!stopResp?.ok) throw new Error('Failed to stop processing for audio page');
+  if (stopResp?.trackedMuted) throw new Error('Stop reported still tracked muted');
 
   // Verify tracking entry removed
   const unmutedCheck = await extPage.evaluate(async (url) => {
