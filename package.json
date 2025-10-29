@@ -4,7 +4,7 @@
   "description": "Remove background music from any tab and output clear speech only. Arabic-first identity: سمعى (Sam3y). On-device by default using open-source ML models.",
   "main": "audio-worklet.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node tests/pup-test.js"
   },
   "repository": {
     "type": "git",
