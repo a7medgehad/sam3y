@@ -18,7 +18,7 @@ function getStreamIdForTab(tabId) {
     // getMediaStreamId works from extension contexts and allows targeting a tabId
     chrome.tabCapture.getMediaStreamId({ targetTabId: tabId }, (streamId) => {
       const err = chrome.runtime.lastError;
-      if (err || !streamId) return reject(err || new Error('No streamId'));
+      if (err || !streamId) return reject(err?.message || 'No streamId');
       resolve(streamId);
     });
   });
