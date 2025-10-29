@@ -108,7 +108,110 @@ async function run() {
   console.log('Unmuted check:', unmutedCheck);
   if (unmutedCheck.trackedMuted) throw new Error('Tab was still tracked muted after stop');
 
-  console.log('Extension test passed');
+  console.log('Hook test passed — starting E2E UI test');
+
+  // Prepare second audio page
+  const audioUrlB = 'data:text/html;charset=utf-8,' + encodeURIComponent(`
+    <!doctype html>
+    <html><head><title>Audio B</title></head><body>
+    <script>
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = 660;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.05;
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      window.__audio__ = { ctx, osc, gain };
+      document.body.innerText = 'Audio B playing';
+    </script>
+    </body></html>
+  `);
+  const pageB = await browser.newPage();
+  await pageB.goto(audioUrlB);
+
+  // Current tab toggle via service worker message (as popup does)
+  await page.goto(audioUrl); // ensure Audio Test active
+  await new Promise(r => setTimeout(r, 250));
+  const toggleTabResp1 = await extPage.evaluate(async () => {
+    return await chrome.runtime.sendMessage({ type: 'sam3y:toggle-current-tab' });
+  });
+  console.log('toggle-current-tab enable:', toggleTabResp1);
+  await new Promise(r => setTimeout(r, 400));
+  const stateAfterToggle1 = await extPage.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const { tabEnabled = {}, mutedBySam3y = {} } = await chrome.storage.local.get({ tabEnabled: {}, mutedBySam3y: {} });
+    return { tabId: tab?.id, enabled: !!tabEnabled[tab?.id], trackedMuted: !!mutedBySam3y[tab?.id] };
+  });
+  console.log('State after current-tab enable:', stateAfterToggle1);
+  if (!stateAfterToggle1.enabled || !stateAfterToggle1.trackedMuted) throw new Error('Current-tab enable failed');
+
+  // Disable current tab
+  const toggleTabResp2 = await extPage.evaluate(async () => {
+    return await chrome.runtime.sendMessage({ type: 'sam3y:toggle-current-tab' });
+  });
+  console.log('toggle-current-tab disable:', toggleTabResp2);
+  await new Promise(r => setTimeout(r, 400));
+  const stateAfterToggle2 = await extPage.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const { tabEnabled = {}, mutedBySam3y = {} } = await chrome.storage.local.get({ tabEnabled: {}, mutedBySam3y: {} });
+    return { tabId: tab?.id, enabled: !!tabEnabled[tab?.id], trackedMuted: !!mutedBySam3y[tab?.id] };
+  });
+  console.log('State after current-tab disable:', stateAfterToggle2);
+  if (stateAfterToggle2.enabled || stateAfterToggle2.trackedMuted) throw new Error('Current-tab disable failed');
+
+  // Global toggle: enable and follow tab changes
+  await page.goto(audioUrl); // ensure Audio Test active
+  const toggleGlobalResp1 = await extPage.evaluate(async () => {
+    return await chrome.runtime.sendMessage({ type: 'sam3y:toggle-global' });
+  });
+  console.log('toggle-global enable:', toggleGlobalResp1);
+  await new Promise(r => setTimeout(r, 500));
+  const stateGlobal1 = await extPage.evaluate(async () => {
+    const tabs = await chrome.tabs.query({});
+    const a = tabs.find(t => t.title === 'Audio Test');
+    const { globalEnabled = false, mutedBySam3y = {} } = await chrome.storage.local.get({ globalEnabled: false, mutedBySam3y: {} });
+    return { globalEnabled, aMuted: !!mutedBySam3y[a.id] };
+  });
+  console.log('Global state on enable:', stateGlobal1);
+  if (!stateGlobal1.globalEnabled || !stateGlobal1.aMuted) throw new Error('Global enable failed to start on Audio Test');
+
+  await pageB.bringToFront(); // activate Audio B
+  await new Promise(r => setTimeout(r, 700));
+  const stateGlobalFollow = await extPage.evaluate(async () => {
+    const tabs = await chrome.tabs.query({});
+    const a = tabs.find(t => t.title === 'Audio Test');
+    const b = tabs.find(t => t.title === 'Audio B');
+    const { globalEnabled = false, mutedBySam3y = {} } = await chrome.storage.local.get({ globalEnabled: false, mutedBySam3y: {} });
+    return { globalEnabled, aMuted: !!mutedBySam3y[a.id], bMuted: !!mutedBySam3y[b.id] };
+  });
+  console.log('Global follow state:', stateGlobalFollow);
+  if (!stateGlobalFollow.globalEnabled || stateGlobalFollow.aMuted || !stateGlobalFollow.bMuted) throw new Error('Global did not follow active tab');
+
+  // Global disable
+  const toggleGlobalResp2 = await extPage.evaluate(async () => {
+    return await chrome.runtime.sendMessage({ type: 'sam3y:toggle-global' });
+  });
+  console.log('toggle-global disable:', toggleGlobalResp2);
+  await new Promise(r => setTimeout(r, 500));
+  const stateGlobal2 = await extPage.evaluate(async () => {
+    const { globalEnabled = true, mutedBySam3y = {} } = await chrome.storage.local.get({ globalEnabled: true, mutedBySam3y: {} });
+    return { globalEnabled, keys: Object.keys(mutedBySam3y) };
+  });
+  console.log('Global state on disable:', stateGlobal2);
+  if (stateGlobal2.globalEnabled || stateGlobal2.keys.length) throw new Error('Global disable failed to stop/unmute all');
+
+  // Profile change
+  const profileResp = await extPage.evaluate(async () => {
+    await chrome.runtime.sendMessage({ type: 'sam3y:set-profile', profile: 'best' });
+    const { profile } = await chrome.storage.local.get({ profile: 'balanced' });
+    return { profile };
+  });
+  console.log('Profile set:', profileResp);
+  if (profileResp.profile !== 'best') throw new Error('Profile change failed');
+
+  console.log('Full E2E test passed');
   await browser.close();
 }
 
