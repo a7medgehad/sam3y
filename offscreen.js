@@ -1,7 +1,7 @@
 // Offscreen audio processing document for سمعى Sam3y
 
 let audioCtx;
-const sessions = new Map(); // tabId -> { stream, source, worklet, gain, dest }
+const sessions = new Map(); // tabId -> { stream, source, worklet, filters, gain }
 let currentProfile = 'balanced';
 
 async function ensureAudioContext() {
@@ -40,13 +40,37 @@ async function startForTab(tabId, streamId) {
   const worklet = new AudioWorkletNode(audioCtx, 'sam3y-pass');
   worklet.port.postMessage({ type: 'setProfile', profile: currentProfile });
 
-  // Optional: output gain control (stub)
+  // Balanced voice emphasis filter chain (DSP-based, lightweight)
+  const hp = audioCtx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 220; // cut low bass
+  hp.Q.value = 0.7;
+
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 1400; // emphasize mid voice band
+  bp.Q.value = 0.9;
+
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 4200; // reduce high-frequency music/hi-hats
+  lp.Q.value = 0.7;
+
+  const compressor = audioCtx.createDynamicsCompressor();
+  compressor.threshold.value = -22;
+  compressor.knee.value = 24;
+  compressor.ratio.value = 4.0;
+  compressor.attack.value = 0.003;
+  compressor.release.value = 0.25;
+
+  // Output gain to normalize after filtering
   const gain = audioCtx.createGain();
-  gain.gain.value = 1.0;
+  gain.gain.value = 1.1;
 
-  source.connect(worklet).connect(gain).connect(audioCtx.destination);
+  // Connect chain: source -> worklet(pass) -> hp -> bp -> lp -> compressor -> gain -> destination
+  source.connect(worklet).connect(hp).connect(bp).connect(lp).connect(compressor).connect(gain).connect(audioCtx.destination);
 
-  sessions.set(tabId, { stream, source, worklet, gain });
+  sessions.set(tabId, { stream, source, worklet, filters: { hp, bp, lp, compressor }, gain });
 }
 
 async function stopForTab(tabId) {
@@ -67,6 +91,23 @@ function setProfile(profile) {
   currentProfile = profile;
   for (const s of sessions.values()) {
     s.worklet.port.postMessage({ type: 'setProfile', profile });
+    const { hp, bp, lp, compressor } = s.filters || {};
+    if (profile === 'fast') {
+      if (hp) { hp.frequency.value = 200; hp.Q.value = 0.6; }
+      if (bp) { bp.frequency.value = 1300; bp.Q.value = 0.7; }
+      if (lp) { lp.frequency.value = 4800; lp.Q.value = 0.6; }
+      if (compressor) { compressor.threshold.value = -18; compressor.ratio.value = 3.0; }
+    } else if (profile === 'balanced') {
+      if (hp) { hp.frequency.value = 220; hp.Q.value = 0.7; }
+      if (bp) { bp.frequency.value = 1400; bp.Q.value = 0.9; }
+      if (lp) { lp.frequency.value = 4200; lp.Q.value = 0.7; }
+      if (compressor) { compressor.threshold.value = -22; compressor.ratio.value = 4.0; }
+    } else if (profile === 'best') {
+      if (hp) { hp.frequency.value = 260; hp.Q.value = 0.9; }
+      if (bp) { bp.frequency.value = 1600; bp.Q.value = 1.1; }
+      if (lp) { lp.frequency.value = 3800; lp.Q.value = 0.9; }
+      if (compressor) { compressor.threshold.value = -26; compressor.ratio.value = 5.0; compressor.knee.value = 30; }
+    }
   }
 }
 
