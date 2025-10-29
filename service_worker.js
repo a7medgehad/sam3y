@@ -40,6 +40,7 @@ async function startForTab(tabId) {
     streamId = await getStreamIdForTab(tabId);
   } catch (err) {
     console.warn('Sam3y: failed to get streamId', err);
+    try { await chrome.storage.local.set({ lastStreamError: String(err || 'No streamId') }); } catch (_) {}
     return;
   }
   // Mute original immediately to avoid double audio; keep track so we can unmute later
