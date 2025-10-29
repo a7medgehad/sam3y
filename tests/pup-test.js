@@ -63,15 +63,15 @@ async function run() {
   if (!startResp?.ok) throw new Error('Failed to start processing for audio page');
   await new Promise(r => setTimeout(r, 1000));
 
-  // Verify tab is muted (by extension)
+  // Verify tracking in storage marks tab as muted by Sam3y
   const mutedCheck = await extPage.evaluate(async (url) => {
     const tabs = await chrome.tabs.query({});
     const t = tabs.find(tt => tt.url === url);
-    const muted = !!(t && t.mutedInfo && t.mutedInfo.muted);
-    return { muted, id: t?.id };
+    const { mutedBySam3y = {} } = await chrome.storage.local.get({ mutedBySam3y: {} });
+    return { trackedMuted: !!(t && mutedBySam3y[t.id]), id: t?.id };
   }, audioUrl);
   console.log('Muted check:', mutedCheck);
-  if (!mutedCheck.muted) throw new Error('Tab was not muted after start');
+  if (!mutedCheck.trackedMuted) throw new Error('Tab was not tracked muted after start');
 
   // Stop processing
   const stopResp = await extPage.evaluate(async (url) => {
@@ -79,15 +79,15 @@ async function run() {
   }, audioUrl);
   if (!stopResp?.ok) throw new Error('Failed to stop processing for audio page');
 
-  // Verify tab is unmuted
+  // Verify tracking entry removed
   const unmutedCheck = await extPage.evaluate(async (url) => {
     const tabs = await chrome.tabs.query({});
     const t = tabs.find(tt => tt.url === url);
-    const muted = !!(t && t.mutedInfo && t.mutedInfo.muted);
-    return { muted, id: t?.id };
+    const { mutedBySam3y = {} } = await chrome.storage.local.get({ mutedBySam3y: {} });
+    return { trackedMuted: !!(t && mutedBySam3y[t.id]), id: t?.id };
   }, audioUrl);
   console.log('Unmuted check:', unmutedCheck);
-  if (unmutedCheck.muted) throw new Error('Tab was not unmuted after stop');
+  if (unmutedCheck.trackedMuted) throw new Error('Tab was still tracked muted after stop');
 
   console.log('Extension test passed');
   await browser.close();
