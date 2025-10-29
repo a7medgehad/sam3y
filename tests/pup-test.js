@@ -76,7 +76,7 @@ async function run() {
     const tabs = await chrome.tabs.query({});
     const t = tabs.find(tt => tt.title === 'Audio Test' || tt.url === url);
     const { mutedBySam3y = {} } = await chrome.storage.local.get({ mutedBySam3y: {} });
-    return { trackedMuted: !!(t && mutedBySam3y[t.id]), id: t?.id };
+    return { trackedMuted: !!(t && mutedBySam3y[t.id]), id: t?.id, keys: Object.keys(mutedBySam3y) };
   }, audioUrl);
   console.log('Muted check:', mutedCheck);
   if (!mutedCheck.trackedMuted) throw new Error('Tab was not tracked muted after start (storage)');
