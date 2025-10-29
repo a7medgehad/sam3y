@@ -42,14 +42,13 @@ async function startForTab(tabId) {
     console.warn('Sam3y: failed to get streamId', err);
     return;
   }
+  // Mute original immediately to avoid double audio; keep track so we can unmute later
+  await chrome.tabs.update(tabId, { muted: true });
+  const { mutedBySam3y } = await getState();
+  mutedBySam3y[tabId] = true;
+  await setState({ mutedBySam3y });
   try {
-    const resp = await chrome.runtime.sendMessage({ type: 'sam3y:start', tabId, streamId });
-    if (resp?.ok) {
-      await chrome.tabs.update(tabId, { muted: true }); // mute original to avoid double audio
-      const { mutedBySam3y } = await getState();
-      mutedBySam3y[tabId] = true;
-      await setState({ mutedBySam3y });
-    }
+    await chrome.runtime.sendMessage({ type: 'sam3y:start', tabId, streamId });
   } catch (err) {
     console.warn('Sam3y: startForTab message failed', err);
   }
