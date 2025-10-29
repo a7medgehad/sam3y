@@ -1,0 +1,24 @@
+{
+  "name": "sam3y",
+  "version": "1.0.0",
+  "description": "Remove background music from any tab and output clear speech only. Arabic-first identity: سمعى (Sam3y). On-device by default using open-source ML models.",
+  "main": "audio-worklet.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/a7medgehad/sam3y.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/a7medgehad/sam3y/issues"
+  },
+  "homepage": "https://github.com/a7medgehad/sam3y#readme",
+  "devDependencies": {
+    "puppeteer": "^22.15.0"
+  }
+}
