@@ -198,7 +198,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (!target?.id) return sendResponse({ ok: false });
       await startForTab(target.id);
       await setActionIcon(await anySessionEnabled());
-      return sendResponse({ ok: true, tabId: target.id });
+      const { mutedBySam3y = {} } = await getState();
+      return sendResponse({ ok: true, tabId: target.id, trackedMuted: !!mutedBySam3y[target.id] });
     }
     if (msg?.type === 'sam3y:stop-for-url' && (msg.url || msg.title)) {
       const tabs = await chrome.tabs.query({});
@@ -208,7 +209,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (!target?.id) return sendResponse({ ok: false });
       await stopForTab(target.id);
       await setActionIcon(await anySessionEnabled());
-      return sendResponse({ ok: true, tabId: target.id });
+      const { mutedBySam3y = {} } = await getState();
+      return sendResponse({ ok: true, tabId: target.id, trackedMuted: !!mutedBySam3y[target.id] });
     }
   })();
   return true;
