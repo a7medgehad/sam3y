@@ -59,7 +59,9 @@ async function run() {
   const startResp = await extPage.evaluate(async (url) => {
     return await chrome.runtime.sendMessage({ type: 'sam3y:start-for-url', url });
   }, audioUrl);
+  console.log('Start response:', startResp);
   if (!startResp?.ok) throw new Error('Failed to start processing for audio page');
+  await new Promise(r => setTimeout(r, 1000));
 
   // Verify tab is muted (by extension)
   const mutedCheck = await extPage.evaluate(async (url) => {
