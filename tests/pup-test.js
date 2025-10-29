@@ -57,7 +57,7 @@ async function run() {
 
   // Start processing for specific URL via test hook
   const startResp = await extPage.evaluate(async (url) => {
-    return await chrome.runtime.sendMessage({ type: 'sam3y:start-for-url', url });
+    return await chrome.runtime.sendMessage({ type: 'sam3y:start-for-url', url, title: 'Audio Test' });
   }, audioUrl);
   console.log('Start response:', startResp);
   if (!startResp?.ok) throw new Error('Failed to start processing for audio page');
@@ -66,7 +66,7 @@ async function run() {
   // Verify tracking in storage marks tab as muted by Sam3y
   const mutedCheck = await extPage.evaluate(async (url) => {
     const tabs = await chrome.tabs.query({});
-    const t = tabs.find(tt => tt.url === url);
+    const t = tabs.find(tt => tt.title === 'Audio Test' || tt.url === url);
     const { mutedBySam3y = {} } = await chrome.storage.local.get({ mutedBySam3y: {} });
     return { trackedMuted: !!(t && mutedBySam3y[t.id]), id: t?.id };
   }, audioUrl);
@@ -75,14 +75,14 @@ async function run() {
 
   // Stop processing
   const stopResp = await extPage.evaluate(async (url) => {
-    return await chrome.runtime.sendMessage({ type: 'sam3y:stop-for-url', url });
+    return await chrome.runtime.sendMessage({ type: 'sam3y:stop-for-url', url, title: 'Audio Test' });
   }, audioUrl);
   if (!stopResp?.ok) throw new Error('Failed to stop processing for audio page');
 
   // Verify tracking entry removed
   const unmutedCheck = await extPage.evaluate(async (url) => {
     const tabs = await chrome.tabs.query({});
-    const t = tabs.find(tt => tt.url === url);
+    const t = tabs.find(tt => tt.title === 'Audio Test' || tt.url === url);
     const { mutedBySam3y = {} } = await chrome.storage.local.get({ mutedBySam3y: {} });
     return { trackedMuted: !!(t && mutedBySam3y[t.id]), id: t?.id };
   }, audioUrl);
