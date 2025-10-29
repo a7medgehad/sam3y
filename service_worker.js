@@ -187,3 +187,26 @@ async function setActionIcon(enabled) {
     console.debug('Sam3y: setActionIcon failed', err);
   }
 }
+
+// Test hooks: explicit start/stop by URL (used by automation)
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  (async () => {
+    if (msg?.type === 'sam3y:start-for-url' && msg.url) {
+      const tabs = await chrome.tabs.query({});
+      const target = tabs.find(t => t.url === msg.url);
+      if (!target?.id) return sendResponse({ ok: false });
+      await startForTab(target.id);
+      await setActionIcon(await anySessionEnabled());
+      return sendResponse({ ok: true, tabId: target.id });
+    }
+    if (msg?.type === 'sam3y:stop-for-url' && msg.url) {
+      const tabs = await chrome.tabs.query({});
+      const target = tabs.find(t => t.url === msg.url);
+      if (!target?.id) return sendResponse({ ok: false });
+      await stopForTab(target.id);
+      await setActionIcon(await anySessionEnabled());
+      return sendResponse({ ok: true, tabId: target.id });
+    }
+  })();
+  return true;
+});
