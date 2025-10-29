@@ -158,8 +158,8 @@ async function run() {
   await new Promise(r => setTimeout(r, 400));
   const stateAfterToggle1 = await extPage.evaluate(async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const { tabEnabled = {}, mutedBySam3y = {} } = await chrome.storage.local.get({ tabEnabled: {}, mutedBySam3y: {} });
-    return { tabId: tab?.id, enabled: !!tabEnabled[tab?.id], trackedMuted: !!mutedBySam3y[tab?.id] };
+    const { tabEnabled = {}, mutedBySam3y = {}, lastStreamError = null } = await chrome.storage.local.get({ tabEnabled: {}, mutedBySam3y: {}, lastStreamError: null });
+    return { tabId: tab?.id, enabled: !!tabEnabled[tab?.id], trackedMuted: !!mutedBySam3y[tab?.id], lastStreamError };
   });
   console.log('State after current-tab enable:', stateAfterToggle1);
   if (!stateAfterToggle1.enabled || !stateAfterToggle1.trackedMuted) throw new Error('Current-tab enable failed');
