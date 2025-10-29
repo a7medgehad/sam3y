@@ -28,8 +28,7 @@ async function run() {
     defaultViewport: { width: 1200, height: 800 },
   });
 
-  const context = await browser.createIncognitoBrowserContext();
-  const page = await context.newPage();
+  const page = await browser.newPage();
 
   // Create an audio page with WebAudio oscillator so tab has audio
   const audioUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(`
@@ -53,7 +52,7 @@ async function run() {
 
   const extId = await getExtensionId(browser);
   const extUrl = `chrome-extension://${extId}/popup.html`;
-  const extPage = await context.newPage();
+  const extPage = await browser.newPage();
   await extPage.goto(extUrl);
 
   // Start processing for specific URL via test hook
@@ -94,4 +93,3 @@ run().catch(err => {
   console.error(err);
   process.exit(1);
 });
-
