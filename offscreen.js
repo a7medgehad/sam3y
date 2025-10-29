@@ -11,21 +11,28 @@ async function ensureAudioContext() {
   return audioCtx;
 }
 
-async function startForTab(tabId) {
+async function startForTab(tabId, streamId) {
   await ensureAudioContext();
   if (sessions.has(tabId)) return;
-  // Capture the currently active tab's audio
-  const stream = await chrome.tabCapture.capture({
-    audio: true,
-    video: false,
-    audioConstraints: {
-      mandatory: {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false
-      }
-    }
-  });
+  // Use getUserMedia with provided streamId (from tabCapture.getMediaStreamId)
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        mandatory: {
+          chromeMediaSource: 'tab',
+          chromeMediaSourceId: streamId,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      },
+      video: false
+    });
+  } catch (err) {
+    console.error('Sam3y offscreen: getUserMedia failed', err);
+    return;
+  }
   if (!stream) return;
 
   const source = audioCtx.createMediaStreamSource(stream);
@@ -66,10 +73,15 @@ function setProfile(profile) {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
     if (msg?.type === 'sam3y:start') {
-      await startForTab(msg.tabId);
+      await startForTab(msg.tabId, msg.streamId);
       sendResponse({ ok: true });
     } else if (msg?.type === 'sam3y:stop') {
       await stopForTab(msg.tabId);
+      sendResponse({ ok: true });
+    } else if (msg?.type === 'sam3y:stop-all') {
+      for (const [id] of sessions.entries()) {
+        try { await stopForTab(id); } catch (_) {}
+      }
       sendResponse({ ok: true });
     } else if (msg?.type === 'sam3y:profile') {
       setProfile(msg.profile);
@@ -85,4 +97,3 @@ document.addEventListener('visibilitychange', () => {
     // no-op: offscreen is always hidden
   }
 });
-

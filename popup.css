@@ -1,11 +1,66 @@
-body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 12px; min-width: 260px; }
-header h1 { margin: 0; font-size: 18px; }
-.en { color: #777; font-weight: 500; margin-inline-start: 6px; font-size: 14px; }
-.subtitle { margin: 4px 0 12px; color: #666; font-size: 12px; }
-.row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; }
-button { padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; background: #fafafa; cursor: pointer; }
-button.enabled { background: #0f9d58; color: white; border-color: #0f9d58; }
-select { padding: 4px 8px; }
-.hint { color: #666; font-size: 12px; margin-inline-start: 10px; }
-.status { color: #333; font-size: 12px; opacity: 0.9; margin-top: 10px; }
-
+/* Sam3y popup – refreshed look */
+body {
+  font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+  margin: 0;
+  min-width: 280px;
+  background: radial-gradient(120px 120px at 85% -10%, #e9f7ef 0%, #ffffff 60%);
+  color: #1f2937;
+}
+header {
+  padding: 14px 14px 6px;
+  border-bottom: 1px solid #eef2f7;
+}
+header h1 {
+  margin: 0;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #22c55e, #0ea5e9);
+  color: white;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(14,165,233,0.35);
+}
+.en { color: #0ea5e9; font-weight: 600; margin-inline-start: 6px; font-size: 14px; }
+.subtitle { margin: 4px 0 12px; color: #64748b; font-size: 12px; }
+main { padding: 10px 14px 14px; }
+.row { display: flex; align-items: center; justify-content: space-between; margin: 10px 0; gap: 10px; }
+button {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 0 1px 2px rgba(16,24,40,0.06);
+}
+button:hover { background: #eef2f7; }
+button.enabled { background: linear-gradient(160deg, #22c55e, #0ea5e9); color: white; border-color: transparent; }
+select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+.hint { color: #64748b; font-size: 12px; margin-inline-start: 10px; }
+.status {
+  color: #334155;
+  font-size: 12px;
+  opacity: 0.95;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}

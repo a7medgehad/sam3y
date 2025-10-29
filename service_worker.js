@@ -1,6 +1,7 @@
 /* Service worker for سمعى Sam3y */
 
 const OFFSCREEN_DOCUMENT_PATH = 'offscreen.html';
+let globalActiveTabId = null;
 
 async function ensureOffscreenDocument() {
   const existing = await chrome.offscreen.hasDocument?.();
@@ -12,9 +13,20 @@ async function ensureOffscreenDocument() {
   });
 }
 
+function getStreamIdForTab(tabId) {
+  return new Promise((resolve, reject) => {
+    // getMediaStreamId works from extension contexts and allows targeting a tabId
+    chrome.tabCapture.getMediaStreamId({ targetTabId: tabId }, (streamId) => {
+      const err = chrome.runtime.lastError;
+      if (err || !streamId) return reject(err || new Error('No streamId'));
+      resolve(streamId);
+    });
+  });
+}
+
 async function getState() {
-  const { globalEnabled = false, tabEnabled = {}, profile = 'balanced' } = await chrome.storage.local.get({ globalEnabled: false, tabEnabled: {}, profile: 'balanced' });
-  return { globalEnabled, tabEnabled, profile };
+  const { globalEnabled = false, tabEnabled = {}, profile = 'balanced', mutedBySam3y = {} } = await chrome.storage.local.get({ globalEnabled: false, tabEnabled: {}, profile: 'balanced', mutedBySam3y: {} });
+  return { globalEnabled, tabEnabled, profile, mutedBySam3y };
 }
 
 async function setState(patch) {
@@ -23,8 +35,24 @@ async function setState(patch) {
 
 async function startForTab(tabId) {
   await ensureOffscreenDocument();
-  await chrome.tabs.update(tabId, { muted: true });
-  await chrome.runtime.sendMessage({ type: 'sam3y:start', tabId });
+  let streamId;
+  try {
+    streamId = await getStreamIdForTab(tabId);
+  } catch (err) {
+    console.warn('Sam3y: failed to get streamId', err);
+    return;
+  }
+  try {
+    const resp = await chrome.runtime.sendMessage({ type: 'sam3y:start', tabId, streamId });
+    if (resp?.ok) {
+      await chrome.tabs.update(tabId, { muted: true }); // mute original to avoid double audio
+      const { mutedBySam3y } = await getState();
+      mutedBySam3y[tabId] = true;
+      await setState({ mutedBySam3y });
+    }
+  } catch (err) {
+    console.warn('Sam3y: startForTab message failed', err);
+  }
 }
 
 async function stopForTab(tabId) {
@@ -33,11 +61,17 @@ async function stopForTab(tabId) {
   } catch (_) {
     // ignore if offscreen not alive
   }
-  await chrome.tabs.update(tabId, { muted: false });
+  const { mutedBySam3y } = await getState();
+  if (mutedBySam3y[tabId]) {
+    await chrome.tabs.update(tabId, { muted: false });
+    delete mutedBySam3y[tabId];
+    await setState({ mutedBySam3y });
+  }
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
   await setState({ globalEnabled: false, tabEnabled: {}, profile: 'balanced' });
+  await setActionIcon(false);
 });
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
@@ -59,18 +93,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       tabEnabled[tab.id] = enabled;
       await setState({ tabEnabled });
       if (enabled) await startForTab(tab.id); else await stopForTab(tab.id);
+      await setActionIcon(await anySessionEnabled());
       sendResponse({ ok: true, enabled });
     } else if (msg?.type === 'sam3y:toggle-global') {
       const { globalEnabled } = await getState();
       const newVal = !globalEnabled;
       await setState({ globalEnabled: newVal });
-      if (!newVal) {
-        // Stop all per-tab sessions
-        const { tabEnabled } = await getState();
-        for (const id of Object.keys(tabEnabled)) {
-          if (tabEnabled[id]) await stopForTab(parseInt(id, 10));
+      if (newVal) {
+        // Start processing for the currently active tab immediately
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab?.id) {
+          await startForTab(tab.id);
+          globalActiveTabId = tab.id;
         }
+      } else {
+        // Stop all sessions and unmute tabs
+        try { await chrome.runtime.sendMessage({ type: 'sam3y:stop-all' }); } catch (_) {}
+        const { mutedBySam3y } = await getState();
+        for (const id of Object.keys(mutedBySam3y)) {
+          await chrome.tabs.update(parseInt(id, 10), { muted: false });
+          delete mutedBySam3y[id];
+        }
+        await setState({ mutedBySam3y });
+        globalActiveTabId = null;
       }
+      await setActionIcon(await anySessionEnabled());
       sendResponse({ ok: true, enabled: newVal });
     } else if (msg?.type === 'sam3y:set-profile') {
       const { profile } = msg;
@@ -82,3 +129,61 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true; // async
 });
 
+// Auto-attach on tab activation when global is enabled
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  const { globalEnabled } = await getState();
+  if (globalEnabled && activeInfo?.tabId) {
+    if (globalActiveTabId && globalActiveTabId !== activeInfo.tabId) {
+      try { await stopForTab(globalActiveTabId); } catch (_) {}
+    }
+    await startForTab(activeInfo.tabId);
+    globalActiveTabId = activeInfo.tabId;
+    await setActionIcon(true);
+  }
+});
+
+async function anySessionEnabled() {
+  const { globalEnabled, tabEnabled } = await getState();
+  if (globalEnabled) return true;
+  return Object.values(tabEnabled).some(Boolean);
+}
+
+async function setActionIcon(enabled) {
+  try {
+    const sizes = [16, 32, 48, 128];
+    const imageData = {};
+    for (const s of sizes) {
+      const c = new OffscreenCanvas(s, s);
+      const ctx = c.getContext('2d');
+      const radius = s / 2;
+      const grad = ctx.createLinearGradient(0, 0, s, s);
+      if (enabled) {
+        grad.addColorStop(0, '#22c55e');
+        grad.addColorStop(1, '#0ea5e9');
+      } else {
+        grad.addColorStop(0, '#9ca3af');
+        grad.addColorStop(1, '#6b7280');
+      }
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(radius, radius, radius - 1, 0, Math.PI * 2);
+      ctx.fill();
+      // sound bars
+      const barW = Math.max(1, Math.floor(s / 8));
+      const gap = Math.max(1, Math.floor(s / 14));
+      const baseX = Math.floor(s / 2) - barW - gap;
+      const heights = enabled ? [s * 0.55, s * 0.75, s * 0.6] : [s * 0.35, s * 0.45, s * 0.4];
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      for (let i = 0; i < 3; i++) {
+        const x = baseX + i * (barW + gap);
+        const h = Math.floor(heights[i]);
+        ctx.fillRect(x, s - h - Math.floor(s * 0.18), barW, h);
+      }
+      imageData[s] = ctx.getImageData(0, 0, s, s);
+    }
+    await chrome.action.setIcon({ imageData });
+  } catch (err) {
+    // ignore if OffscreenCanvas not supported
+    console.debug('Sam3y: setActionIcon failed', err);
+  }
+}
