@@ -190,17 +190,21 @@ async function setActionIcon(enabled) {
 // Test hooks: explicit start/stop by URL (used by automation)
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
-    if (msg?.type === 'sam3y:start-for-url' && msg.url) {
+    if (msg?.type === 'sam3y:start-for-url' && (msg.url || msg.title)) {
       const tabs = await chrome.tabs.query({});
-      const target = tabs.find(t => t.url === msg.url);
+      let target = null;
+      if (msg.title) target = tabs.find(t => t.title === msg.title);
+      if (!target && msg.url) target = tabs.find(t => t.url === msg.url);
       if (!target?.id) return sendResponse({ ok: false });
       await startForTab(target.id);
       await setActionIcon(await anySessionEnabled());
       return sendResponse({ ok: true, tabId: target.id });
     }
-    if (msg?.type === 'sam3y:stop-for-url' && msg.url) {
+    if (msg?.type === 'sam3y:stop-for-url' && (msg.url || msg.title)) {
       const tabs = await chrome.tabs.query({});
-      const target = tabs.find(t => t.url === msg.url);
+      let target = null;
+      if (msg.title) target = tabs.find(t => t.title === msg.title);
+      if (!target && msg.url) target = tabs.find(t => t.url === msg.url);
       if (!target?.id) return sendResponse({ ok: false });
       await stopForTab(target.id);
       await setActionIcon(await anySessionEnabled());
