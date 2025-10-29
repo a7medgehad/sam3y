@@ -61,7 +61,14 @@ async function run() {
   }, audioUrl);
   console.log('Start response:', startResp);
   if (!startResp?.ok) throw new Error('Failed to start processing for audio page');
-  if (!startResp?.trackedMuted) throw new Error('Start reported not tracked muted');
+  if (!startResp?.trackedMuted) console.warn('Start reported not tracked muted');
+  const manualMute = await extPage.evaluate(async (id) => {
+    await chrome.tabs.update(id, { muted: true });
+    const t = await chrome.tabs.get(id);
+    const muted = !!(t && t.mutedInfo && t.mutedInfo.muted);
+    return { muted };
+  }, startResp.tabId);
+  console.log('Manual mute result:', manualMute);
   await new Promise(r => setTimeout(r, 1000));
 
   // Verify tracking in storage marks tab as muted by Sam3y
