@@ -1,4 +1,5 @@
 const path = require('path');
+const http = require('http');
 const puppeteer = require('puppeteer');
 
 async function getExtensionId(browser) {
@@ -16,7 +17,55 @@ async function getExtensionId(browser) {
   throw new Error('Extension service worker not found');
 }
 
+function startServer() {
+  const aPage = `<!doctype html><html><head><title>Audio Test</title></head><body>
+  <script>
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = 440;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.05;
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    window.__audio__ = { ctx, osc, gain };
+    document.body.innerText = 'Audio playing (WebAudio oscillator)';
+  </script></body></html>`;
+  const bPage = `<!doctype html><html><head><title>Audio B</title></head><body>
+  <script>
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.value = 660;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.05;
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    window.__audio__ = { ctx, osc, gain };
+    document.body.innerText = 'Audio B playing';
+  </script></body></html>`;
+  const server = http.createServer((req, res) => {
+    if (req.url.startsWith('/a')) {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(aPage);
+    } else if (req.url.startsWith('/b')) {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(bPage);
+    } else {
+      res.writeHead(404);
+      res.end('Not found');
+    }
+  });
+  return new Promise(resolve => {
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address();
+      resolve({ server, port });
+    });
+  });
+}
+
 async function run() {
+  const { server, port } = await startServer();
   const extensionPath = path.resolve(__dirname, '..');
   const browser = await puppeteer.launch({
     headless: false,
@@ -30,24 +79,8 @@ async function run() {
 
   const page = await browser.newPage();
 
-  // Create an audio page with WebAudio oscillator so tab has audio
-  const audioUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(`
-    <!doctype html>
-    <html><head><title>Audio Test</title></head><body>
-    <script>
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.value = 440;
-      const gain = ctx.createGain();
-      gain.gain.value = 0.05; // quiet
-      osc.connect(gain).connect(ctx.destination);
-      osc.start();
-      window.__audio__ = { ctx, osc, gain };
-      document.body.innerText = 'Audio playing (WebAudio oscillator)';
-    </script>
-    </body></html>
-  `);
+  // Create audio page over HTTP so tab capture works reliably
+  const audioUrl = `http://127.0.0.1:${port}/a`;
   await page.goto(audioUrl);
 
   const extId = await getExtensionId(browser);
@@ -111,23 +144,7 @@ async function run() {
   console.log('Hook test passed — starting E2E UI test');
 
   // Prepare second audio page
-  const audioUrlB = 'data:text/html;charset=utf-8,' + encodeURIComponent(`
-    <!doctype html>
-    <html><head><title>Audio B</title></head><body>
-    <script>
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      osc.type = 'square';
-      osc.frequency.value = 660;
-      const gain = ctx.createGain();
-      gain.gain.value = 0.05;
-      osc.connect(gain).connect(ctx.destination);
-      osc.start();
-      window.__audio__ = { ctx, osc, gain };
-      document.body.innerText = 'Audio B playing';
-    </script>
-    </body></html>
-  `);
+  const audioUrlB = `http://127.0.0.1:${port}/b`;
   const pageB = await browser.newPage();
   await pageB.goto(audioUrlB);
 
@@ -213,6 +230,7 @@ async function run() {
 
   console.log('Full E2E test passed');
   await browser.close();
+  server.close();
 }
 
 run().catch(err => {
